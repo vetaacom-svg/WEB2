@@ -32,7 +32,7 @@ import OutOfZoneView from './views/OutOfZoneView';
 import TicketsList from './views/TicketsList';
 import TicketNew from './views/TicketNew';
 import TicketChat from './views/TicketChat';
-import AdminLiveMap from './views/AdminLiveMap';
+import AdminLiveMapRoute from './views/AdminLiveMapRoute';
 import { CategoryID, Store, Product, Language, CartItem } from './types';
 import { TRANSLATIONS } from './constants';
 import { safeGetItem, safeSetItem } from './lib/storage';
@@ -468,7 +468,7 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
-    const publicPaths = ['/out-of-zone', '/blocked', '/vpn-blocked', '/settings/help', '/login', '/signup', '/email-otp-verify', '/permissions', '/admin/carte-live'];
+    const publicPaths = ['/out-of-zone', '/blocked', '/vpn-blocked', '/settings/help', '/login', '/signup', '/email-otp-verify', '/permissions'];
     if (isOutOfZone && !publicPaths.includes(location.pathname)) {
       navigate('/out-of-zone', { replace: true });
     }
@@ -511,7 +511,7 @@ function AppContent() {
           <Route path="/tickets/new" element={<TicketNewRoute />} />
           <Route path="/tickets/:id" element={<TicketChatRoute />} />
         </Route>
-        <Route path="/admin/carte-live" element={<AdminLiveMap />} />
+        <Route path="/admin/carte-live" element={<AdminLiveMapRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </NetworkWrapper>

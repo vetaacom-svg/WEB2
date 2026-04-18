@@ -162,6 +162,8 @@ export interface UserProfile {
   phone?: string;
   isLoggedIn: boolean;
   language?: Language;
+  /** Défini côté base (`profiles.is_admin`) — ne jamais faire confiance au seul stockage local. */
+  isAdmin?: boolean;
 }
 
 export type NotificationType =

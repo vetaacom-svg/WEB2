@@ -1,9 +1,8 @@
-// Préférez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env (non versionné) ;
-// les valeurs ci-dessous restent le repli si les variables ne sont pas définies.
+// Obligatoire : VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans `.env` (voir `.env.example`).
+// Aucune clé ni URL de projet ne doit être commitée dans le dépôt.
 
-const DEFAULT_URL = 'https://lubeapgnjpvlxidxfnhb.supabase.co';
-const DEFAULT_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx1YmVhcGduanB2bHhpZHhmbmhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNDAzMjAsImV4cCI6MjA4NTgxNjMyMH0.A6kV2LrklpeAmqoPLLI7zjhGuDlyK5WZ2_MIN8sMJ_M';
+const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
 /**
  * URL utilisée par @supabase/supabase-js (REST, auth, storage, realtime, functions).
@@ -26,8 +25,7 @@ function isLocalHostname(hostname: string): boolean {
 }
 
 export function getSupabaseApiUrl(): string {
-  const fromEnv = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-  const direct = (fromEnv || DEFAULT_URL).trim();
+  const direct = envUrl;
 
   if (typeof window === 'undefined') return direct;
   if (import.meta.env.VITE_SUPABASE_ALWAYS_DIRECT === 'true') return direct;
@@ -58,15 +56,16 @@ export function getSupabaseApiUrl(): string {
  * À utiliser quand on veut bypass total du proxy Vite.
  */
 export function getSupabaseDirectUrl(): string {
-  const fromEnv = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-  return (fromEnv || DEFAULT_URL).trim();
+  return envUrl;
 }
 
 const SUPABASE_CONFIG = {
   get URL() {
     return getSupabaseApiUrl();
   },
-  ANON_KEY: (import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_ANON_KEY).trim(),
+  get ANON_KEY() {
+    return envKey;
+  },
   
   // Configuration de timeout pour éviter les requêtes bloquées
   TIMEOUT: 10000,
@@ -78,18 +77,18 @@ const SUPABASE_CONFIG = {
   }
 };
 
-// Validation de la configuration
+// Validation de la configuration (clé anon = publique par nature, mais ne doit pas être absente)
 const validateConfig = () => {
-  const errors = [];
-  
-  if (!SUPABASE_CONFIG.URL || !/^https?:\/\//.test(SUPABASE_CONFIG.URL)) {
-    errors.push('URL Supabase invalide');
+  const errors: string[] = [];
+
+  if (!envUrl || !/^https?:\/\//.test(envUrl)) {
+    errors.push('Définissez VITE_SUPABASE_URL (ex. https://xxx.supabase.co) dans .env à la racine du projet.');
   }
-  
-  if (!SUPABASE_CONFIG.ANON_KEY || SUPABASE_CONFIG.ANON_KEY.length < 100) {
-    errors.push('Clé ANON Supabase invalide ou trop courte');
+
+  if (!envKey || envKey.length < 100) {
+    errors.push('Définissez VITE_SUPABASE_ANON_KEY (clé anon du projet) dans .env.');
   }
-  
+
   return errors;
 };
 

@@ -146,7 +146,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               fullName: profile?.full_name || session.user.user_metadata?.full_name || '',
               phone: profile?.phone || session.user.user_metadata?.phone || '',
               language: (profile?.language as Language) || 'fr',
-              isLoggedIn: true
+              isLoggedIn: true,
+              isAdmin: profile?.is_admin === true,
             };
             setIsBlocked(profile?.is_blocked || false);
             setUser(userData);
@@ -204,8 +205,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 fullName: profile.full_name || session.user.user_metadata?.full_name || '',
                 phone: profile.phone || session.user.user_metadata?.phone || '',
                 language: (profile.language as Language) || 'fr',
-                isLoggedIn: true
+                isLoggedIn: true,
+                isAdmin: profile.is_admin === true,
               };
+              setIsBlocked(profile.is_blocked || false);
               setUser(userData);
               safeSetItem('veetaa_user', JSON.stringify(userData));
             }
@@ -263,7 +266,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         fullName: profile?.full_name || userToUse.user_metadata?.full_name || '',
         phone: profile?.phone || userToUse.user_metadata?.phone || '',
         language: (profile?.language as Language) || 'fr',
-        isLoggedIn: true
+        isLoggedIn: true,
+        isAdmin: profile?.is_admin === true,
       };
       setIsBlocked(profile?.is_blocked || false);
       setUser(userData);

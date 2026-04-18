@@ -172,16 +172,18 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
 
 // Fonction de test de connexion avec retry et debug CORS
 export const testSupabaseConnection = async (): Promise<{ success: boolean; error?: string; details?: any }> => {
-  console.log('%c🔍 TEST DE CONNEXION SUPABASE', 'color: blue; font-weight: bold;');
-  console.log('🌐 URL:', SUPABASE_CLIENT_URL);
-  console.log('🔑 Key length:', SUPABASE_CONFIG.ANON_KEY.length);
+  if (import.meta.env.DEV) {
+    console.log('%c🔍 TEST DE CONNEXION SUPABASE', 'color: blue; font-weight: bold;');
+    console.log('🌐 URL:', SUPABASE_CLIENT_URL);
+    console.log('🔑 Key length:', SUPABASE_CONFIG.ANON_KEY.length);
+  }
   
   try {
     // Test 1: Requête Supabase client standard
-    console.log('🔍 Test: Requête Supabase client...');
+    if (import.meta.env.DEV) console.log('🔍 Test: Requête Supabase client...');
     const { data, error } = await supabase.from(Db.categories).select('count', { count: 'exact', head: true });
-    
-    console.log('📊 Supabase Response:', { data, error });
+
+    if (import.meta.env.DEV) console.log('📊 Supabase Response:', { data, error });
     
     if (error) {
       console.error('❌ Supabase Auth/Connection Error:', error.message);

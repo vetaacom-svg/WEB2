@@ -150,6 +150,7 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
     deliveryFeePerKm: s.delivery_fee_per_km ?? null,
     deliveryFixedFee: s.delivery_fixed_fee ?? null,
     category: s.category_id || 'food',  // Utilise category_id du SQL
+    sub_category: s.sub_category ?? undefined,
     type: s.type || 'products'  // Utilise type du SQL
   }), []);
 
@@ -177,6 +178,8 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
 
     setLoadingCatalog(true);
     setCatalogLoadError(null);
+    setPage(0);
+    setHasMoreStores(true);
     devLog('%c🔵 [CATALOG] ===== STARTING INITIAL FETCH =====', 'color: blue; font-weight: bold; font-size: 14px;');
     devLog('Language:', language);
     
@@ -243,10 +246,36 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
         return;
       }
 
+      /** Pagination magasins : la 1ʳᵉ requête ne charge qu’une page ; on enchaîne ici (async) avant le forEach. */
+      let catalogResults = results;
+      const storesSlot = results[1];
+      if (storesSlot.status === 'fulfilled' && !ac.signal.aborted) {
+        const { data: rawData, error } = storesSlot.value as { data: unknown; error: unknown };
+        if (!error && Array.isArray(rawData) && rawData.length === PAGE_SIZE) {
+          let allRows: any[] = [...rawData];
+          let from = PAGE_SIZE;
+          let lastPageLen = rawData.length;
+          while (lastPageLen === PAGE_SIZE && !ac.signal.aborted) {
+            const { data: nextBatch, error: pageErr } = await catalogRepo
+              .storesPage(from, from + PAGE_SIZE - 1)
+              .abortSignal(ac.signal);
+            if (pageErr || !nextBatch?.length) break;
+            allRows = [...allRows, ...nextBatch];
+            lastPageLen = nextBatch.length;
+            from += PAGE_SIZE;
+          }
+          catalogResults = [...results] as typeof results;
+          catalogResults[1] = {
+            status: 'fulfilled',
+            value: { data: allRows, error: null },
+          };
+        }
+      }
+
       const aggregatedErrors: string[] = [];
 
       // Process results regardless of success/failure
-      results.forEach((result, idx) => {
+      catalogResults.forEach((result, idx) => {
         const queryNames = ['CATEGORIES', 'STORES', 'SUB_CATEGORIES', 'PRODUCTS'];
         const queryName = queryNames[idx];
         
@@ -294,13 +323,14 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
               devLog('Mapped unique categories:', mapped);
               setCategoriesData(mapped);
               devLog('%c✅ Categories state updated (deduplicated)', 'color: green;');
-            } else if (idx === 1) { // stores
+            } else if (idx === 1) { // stores (données déjà fusionnées page par page ci-dessus si besoin)
               devLog('Sample stores:', data.slice(0, 2));
               const mapped = data.map(mapStore);
-              devLog('Mapped stores:', mapped.slice(0, 2));
+              devLog('Mapped stores (total):', mapped.length);
               setStoresData(mapped);
-              if (data.length < PAGE_SIZE) setHasMoreStores(false);
-              devLog('%c✅ Stores state updated', 'color: green;');
+              setPage(Math.max(0, Math.ceil(data.length / PAGE_SIZE) - 1));
+              setHasMoreStores(false);
+              devLog('%c✅ Stores state updated (all pages)', 'color: green;');
             } else if (idx === 2) { // sub_categories
               devLog('Sample sub_categories:', data.slice(0, 2));
               setSubCategoriesData(data);
