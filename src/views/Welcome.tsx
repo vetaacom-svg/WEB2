@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useVeetaa } from '../context/VeetaaContext';
 
 import { TRANSLATIONS } from '../constants';
-import { Language } from '../types';
+import { Language, Store } from '../types';
+
 import { 
   ShoppingBag, 
   MapPin, 
@@ -11,7 +12,7 @@ import {
   Search, 
   Star, 
   Truck, 
-  Store, 
+  Store as StoreIcon, 
   Smartphone, 
   UserPlus, 
   Handshake, 
@@ -29,8 +30,9 @@ interface WelcomeProps {
 const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
   const navigate = useNavigate();
   const { storesData } = useVeetaa();
-  const [randomStores, setRandomStores] = useState<any[]>([]);
+  const [randomStores, setRandomStores] = useState<Store[]>([]);
   const [scrolled, setScrolled] = useState(false);
+
 
   const t = (key: string) => TRANSLATIONS[language][key] || key;
 
@@ -57,7 +59,8 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
           const slotToReplace = Math.floor(Math.random() * next.length);
           
           // Find a store that isn't currently displayed
-          const pool = storesData.filter(s => !next.some(ns => ns.id === s.id));
+          const pool = storesData.filter((s: Store) => !next.some((ns: Store) => ns.id === s.id));
+
           
           if (pool.length > 0) {
             const newStore = pool[Math.floor(Math.random() * pool.length)];
@@ -284,7 +287,8 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
                 {typeof store === 'object' && store.image ? (
                   <img src={store.image} alt={store.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <Store size={40} color={gold} opacity={0.5} />
+                  <StoreIcon size={40} color={gold} opacity={0.5} />
+
                 )}
               </div>
               <p style={{ fontWeight: '700', fontSize: '0.9rem', color: white, margin: 0, lineClamp: 1, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -409,7 +413,7 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
                 {op.icon}
               </div>
               <h3 style={{ fontSize: '1.5rem', fontWeight: '800' }}>{op.title}</h3>
-              <p style={{ color: gold, marginTop: '10px', fontWeight: '700' }}>En savoir plus <ChevronRight size={16} inline-block /></p>
+              <p style={{ color: gold, marginTop: '10px', fontWeight: '700' }}>En savoir plus <ChevronRight size={16} style={{ display: 'inline-block', verticalAlign: 'middle' }} /></p>
             </div>
           ))}
         </div>
