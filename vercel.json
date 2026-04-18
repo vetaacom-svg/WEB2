@@ -1,0 +1,25 @@
+{
+  "rewrites": [
+    {
+      "source": "/rest/v1/:path*",
+      "destination": "https://lubeapgnjpvlxidxfnhb.supabase.co/rest/v1/:path*"
+    },
+    {
+      "source": "/auth/v1/:path*",
+      "destination": "https://lubeapgnjpvlxidxfnhb.supabase.co/auth/v1/:path*"
+    },
+    {
+      "source": "/storage/v1/:path*",
+      "destination": "https://lubeapgnjpvlxidxfnhb.supabase.co/storage/v1/:path*"
+    },
+    {
+      "source": "/realtime/v1/:path*",
+      "destination": "https://lubeapgnjpvlxidxfnhb.supabase.co/realtime/v1/:path*"
+    },
+    {
+      "source": "/functions/v1/:path*",
+      "destination": "https://lubeapgnjpvlxidxfnhb.supabase.co/functions/v1/:path*"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
