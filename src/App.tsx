@@ -32,10 +32,6 @@ import OutOfZoneView from './views/OutOfZoneView';
 import TicketsList from './views/TicketsList';
 import TicketNew from './views/TicketNew';
 import TicketChat from './views/TicketChat';
-<<<<<<< HEAD
-import AdminLiveMapRoute from './views/AdminLiveMapRoute';
-=======
->>>>>>> f208f70 (final)
 import { CategoryID, Store, Product, Language, CartItem } from './types';
 import { TRANSLATIONS } from './constants';
 import { safeGetItem, safeRemoveItem, safeSetItem } from './lib/storage';
@@ -468,18 +464,6 @@ function AppContent() {
   const ctx = useVeetaa();
   const { language, userLocation } = ctx;
   const navigate = useNavigate();
-  const location = useLocation();
-
-<<<<<<< HEAD
-  useEffect(() => {
-    const publicPaths = ['/out-of-zone', '/blocked', '/vpn-blocked', '/settings/help', '/login', '/signup', '/email-otp-verify', '/permissions'];
-    if (isOutOfZone && !publicPaths.includes(location.pathname)) {
-      navigate('/out-of-zone', { replace: true });
-    }
-  }, [isOutOfZone, location.pathname, navigate]);
-
-=======
->>>>>>> f208f70 (final)
   return (
     <NetworkWrapper language={language}>
       <Routes>
@@ -517,10 +501,6 @@ function AppContent() {
           <Route path="/tickets/new" element={<TicketNewRoute />} />
           <Route path="/tickets/:id" element={<TicketChatRoute />} />
         </Route>
-<<<<<<< HEAD
-        <Route path="/admin/carte-live" element={<AdminLiveMapRoute />} />
-=======
->>>>>>> f208f70 (final)
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </NetworkWrapper>
