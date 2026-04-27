@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useVeetaa } from '../context/VeetaaContext';
+import burgerImage from '../../bergeur.png';
+import tacosImage from '../../tacos.png';
+import { safeRemoveItem, safeSetItem } from '../lib/storage';
+import { sanitizeSearchInput } from '../lib/security';
 
 import { TRANSLATIONS } from '../constants';
 import { Language, Store } from '../types';
@@ -23,15 +27,21 @@ import {
 } from 'lucide-react';
 
 interface WelcomeProps {
-  onStart: () => void;
+  onStart: () => void | Promise<void>;
   language: Language;
 }
 
 const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
   const navigate = useNavigate();
-  const { storesData } = useVeetaa();
+  const { storesData, deliveryZones = [], setUserLocation, refreshLocation, loadingLocation } = useVeetaa();
   const [randomStores, setRandomStores] = useState<Store[]>([]);
   const [scrolled, setScrolled] = useState(false);
+  const [phraseIndex, setPhraseIndex] = useState(0);
+  const [heroImageIndex, setHeroImageIndex] = useState(0);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [selectedCityName, setSelectedCityName] = useState('');
+  const [citySearch, setCitySearch] = useState('');
+  const [startError, setStartError] = useState('');
 
 
   const t = (key: string) => TRANSLATIONS[language][key] || key;
@@ -90,6 +100,75 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
     t('food'), t('pharmacie'), t('boulangerie'), 
     t('pressing'), t('legumes'), t('market'), t('express')
   ];
+  const heroSlogans = [
+    'Tout ce que vous voulez, livré vite.',
+    'Everything you want, delivered fast.'
+  ];
+  const availableCities = Array.isArray(deliveryZones)
+    ? deliveryZones
+      .filter((z: any) => z?.name)
+      .map((z: any) => ({ name: String(z.name), lat: Number(z.center_lat || 0), lon: Number(z.center_lng || 0) }))
+      .filter((z: any) => Number.isFinite(z.lat) && Number.isFinite(z.lon))
+      .sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr'))
+    : [];
+  const filteredCities = availableCities.filter((c: any) =>
+    c.name.toLowerCase().includes(citySearch.trim().toLowerCase())
+  );
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setPhraseIndex((prev) => (prev + 1) % heroSlogans.length);
+    }, 2800);
+
+    return () => window.clearInterval(interval);
+  }, [heroSlogans.length]);
+
+  useEffect(() => {
+    const imageInterval = window.setInterval(() => {
+      setHeroImageIndex((prev) => (prev + 1) % 2);
+    }, 2400);
+
+    return () => window.clearInterval(imageInterval);
+  }, []);
+
+  const openStartModal = () => {
+    setStartError('');
+    setCitySearch('');
+    setSelectedCityName('');
+    setShowStartModal(true);
+  };
+
+  const handleChooseCity = async () => {
+    if (!selectedCityName) {
+      setStartError(language === 'en' ? 'Please select a city first.' : 'Veuillez choisir une ville.');
+      return;
+    }
+
+    const city = availableCities.find((c: any) => c.name === selectedCityName);
+    if (!city) {
+      setStartError(language === 'en' ? 'Selected city is unavailable.' : 'La ville selectionnee est indisponible.');
+      return;
+    }
+
+    const nextLocation = { lat: city.lat, lon: city.lon, city: city.name };
+    setUserLocation(nextLocation);
+    safeSetItem('userLocation', JSON.stringify(nextLocation));
+    safeSetItem('veetaa_manual_city_override', '1');
+    setShowStartModal(false);
+    await onStart();
+  };
+
+  const handleUseLocation = async () => {
+    setStartError('');
+    try {
+      safeRemoveItem('veetaa_manual_city_override');
+      await refreshLocation();
+      setShowStartModal(false);
+      await onStart();
+    } catch {
+      setStartError(language === 'en' ? 'Unable to use your location.' : 'Impossible d utiliser votre localisation.');
+    }
+  };
 
   const features = [
     {
@@ -181,51 +260,70 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
         position: 'relative',
         overflow: 'hidden'
       }}>
-        <div style={{ zIndex: 1, maxWidth: '1000px' }}>
-          <h1 style={{ 
-            fontSize: 'clamp(2.5rem, 10vw, 6rem)', 
-            fontWeight: '950', 
-            margin: '0 0 30px 0',
-            lineHeight: '1',
-            letterSpacing: '-0.04em',
-            background: `linear-gradient(135deg, ${white} 0%, ${gold} 50%, ${darkGold} 100%)`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))'
-          }}>
-            {t('welcome')}
-          </h1>
-          <p style={{ fontSize: '1.25rem', color: '#aaaaaa', marginBottom: '40px', fontWeight: '500' }}>
-            Découvrez les meilleurs restaurants et commerces de votre ville, livrés en un clin d'œil.
-          </p>
-          
-          <button 
-            onClick={onStart}
-            style={{
-              backgroundColor: gold,
-              color: black,
-              padding: '20px 60px',
-              borderRadius: '40px',
-              fontSize: '1.25rem',
-              fontWeight: '900',
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: `0 20px 40px -10px ${gold}66`,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
-              e.currentTarget.style.boxShadow = `0 25px 50px -10px ${gold}88`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = `0 20px 40px -10px ${gold}66`;
-            }}
-          >
-            {t('getStarted')}
-          </button>
+        <div style={{ zIndex: 1, maxWidth: '1200px', width: '100%' }}>
+          <div className="hero-main-layout">
+            <div className="hero-text-block">
+              <h1 style={{ 
+                fontSize: 'clamp(1.8rem, 4.2vw, 4rem)', 
+                fontWeight: '950', 
+                margin: '0 0 30px 0',
+                lineHeight: '1.05',
+                letterSpacing: '-0.04em',
+                filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.5))',
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center'
+              }}>
+                <span key={phraseIndex} className="hero-slogan-line">
+                  {heroSlogans[phraseIndex]}
+                </span>
+              </h1>
+              <p style={{ fontSize: '1.25rem', color: '#aaaaaa', marginBottom: '40px', fontWeight: '500' }}>
+                Découvrez les meilleurs restaurants et commerces de votre ville, livrés en un clin d'œil.
+              </p>
+              
+              <button 
+                onClick={openStartModal}
+                style={{
+                  backgroundColor: gold,
+                  color: black,
+                  padding: '20px 60px',
+                  borderRadius: '40px',
+                  fontSize: '1.25rem',
+                  fontWeight: '900',
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: `0 20px 40px -10px ${gold}66`,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-5px) scale(1.05)';
+                  e.currentTarget.style.boxShadow = `0 25px 50px -10px ${gold}88`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                  e.currentTarget.style.boxShadow = `0 20px 40px -10px ${gold}66`;
+                }}
+              >
+                {t('getStarted')}
+              </button>
+            </div>
+            <div className="hero-images-frame">
+              <img
+                src={burgerImage}
+                alt="Burger"
+                className={`hero-food-image hero-food-image-left ${heroImageIndex === 0 ? 'is-active' : ''}`}
+              />
+              <img
+                src={tacosImage}
+                alt="Tacos"
+                className={`hero-food-image hero-food-image-right ${heroImageIndex === 1 ? 'is-active' : ''}`}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Scroll Indicator */}
@@ -274,7 +372,7 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
                 position: 'relative',
                 boxShadow: `0 10px 20px rgba(0,0,0,0.3)`
               }}
-              onClick={() => typeof store === 'object' && onStart()}
+              onClick={() => typeof store === 'object' && openStartModal()}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = gold;
                 e.currentTarget.style.transform = 'scale(1.1)';
@@ -476,11 +574,263 @@ const LandingPage: React.FC<WelcomeProps> = ({ onStart, language }) => {
           from { opacity: 0; transform: scale(0.8); }
           to { opacity: 1; transform: scale(1); }
         }
+        @keyframes sloganReveal {
+          from { opacity: 0; transform: translateY(8px) scale(0.99); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes foodFloatZoom {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-8px) scale(1.04); }
+        }
+        @keyframes foodGlow {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.2)); }
+          50% { filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.5)); }
+        }
+        @keyframes sloganGlow {
+          0%, 100% { filter: drop-shadow(0 0 0 rgba(212, 175, 55, 0)); }
+          50% { filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.5)); }
+        }
         .store-item-fade {
           animation: fadeInScale 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+        .hero-slogan-line {
+          display: inline-block;
+          background: linear-gradient(135deg, #FFFFFF 0%, #D4AF37 50%, #B8860B 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation:
+            sloganReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards,
+            sloganGlow 3s ease-in-out infinite;
+          will-change: transform, opacity, filter;
+          min-height: 1.2em;
+          white-space: normal;
+          text-align: center;
+          max-width: 100%;
+        }
+        .hero-main-layout {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 48px;
+          width: 100%;
+        }
+        .hero-text-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-width: 0;
+          flex: 1;
+          max-width: 720px;
+        }
+        .hero-images-frame {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: min(460px, 42vw);
+          height: min(300px, 30vw);
+          min-width: 340px;
+          min-height: 230px;
+          padding: 0;
+          overflow: hidden;
+        }
+        .hero-food-image {
+          position: absolute;
+          width: min(300px, 27vw);
+          height: auto;
+          margin: 0;
+          display: block;
+          opacity: 0;
+          transform: translateY(10px) scale(0.94);
+          animation:
+            foodFloatZoom 3.6s ease-in-out infinite,
+            foodGlow 3.6s ease-in-out infinite;
+          transition: opacity 0.55s ease, transform 0.55s ease;
+          will-change: transform, filter;
+          pointer-events: none;
+        }
+        .hero-food-image.is-active {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+        .hero-food-image-left {
+          animation-delay: 0.2s;
+        }
+        .hero-food-image-right {
+          animation-delay: 1s;
+        }
+        @media (max-width: 960px) {
+          .hero-main-layout {
+            flex-direction: column;
+            gap: 24px;
+          }
+          .hero-text-block {
+            max-width: 100%;
+          }
+          .hero-images-frame {
+            width: min(360px, 86vw);
+            height: min(260px, 62vw);
+            min-width: auto;
+            min-height: auto;
+          }
+          .hero-food-image {
+            width: min(240px, 58vw);
+          }
+        }
+        .start-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.65);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2000;
+          padding: 16px;
+        }
+        .start-modal-card {
+          width: min(540px, 92vw);
+          border-radius: 24px;
+          border: 1px solid rgba(212, 175, 55, 0.35);
+          background: linear-gradient(165deg, #121212 0%, #080808 100%);
+          padding: 22px;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 30px rgba(212, 175, 55, 0.16);
+        }
+        .start-modal-title {
+          margin: 0 0 14px;
+          font-size: clamp(1.1rem, 2.8vw, 1.5rem);
+          font-weight: 900;
+          color: #fff;
+        }
+        .start-modal-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 14px;
+        }
+        .start-modal-btn {
+          border: none;
+          border-radius: 14px;
+          padding: 12px 14px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .start-modal-btn-primary {
+          background: #d4af37;
+          color: #000;
+        }
+        .start-modal-btn-secondary {
+          background: rgba(212, 175, 55, 0.12);
+          color: #f3d97a;
+          border: 1px solid rgba(212, 175, 55, 0.35);
+        }
+        .start-modal-input {
+          width: 100%;
+          border-radius: 12px;
+          border: 1px solid rgba(212, 175, 55, 0.35);
+          background: rgba(255, 255, 255, 0.03);
+          color: #fff;
+          padding: 10px 12px;
+          outline: none;
+          margin-bottom: 10px;
+        }
+        .start-modal-city-list {
+          max-height: 220px;
+          overflow: auto;
+          border: 1px solid rgba(212, 175, 55, 0.2);
+          border-radius: 12px;
+        }
+        .start-modal-city-item {
+          width: 100%;
+          text-align: left;
+          border: none;
+          padding: 10px 12px;
+          color: #f5f5f5;
+          background: transparent;
+          cursor: pointer;
+        }
+        .start-modal-city-item:hover,
+        .start-modal-city-item.active {
+          background: rgba(212, 175, 55, 0.18);
+          color: #fff;
+        }
+        .start-modal-hint {
+          color: #bbbbbb;
+          font-size: 0.9rem;
+          margin: 8px 0 0;
+        }
+        .start-modal-error {
+          color: #ff7a7a;
+          font-size: 0.9rem;
+          margin-top: 8px;
+        }
+        @media (max-width: 640px) {
+          .start-modal-actions {
+            grid-template-columns: 1fr;
+          }
+        }
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
       `}</style>
+
+      {showStartModal && (
+        <div className="start-modal-overlay" onClick={() => setShowStartModal(false)}>
+          <div className="start-modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3 className="start-modal-title">
+              {language === 'en'
+                ? 'How do you want to browse stores?'
+                : 'Comment voulez-vous afficher les magasins ?'}
+            </h3>
+            <p className="start-modal-hint">
+              {language === 'en'
+                ? 'Choose a city from available zones or use your current location.'
+                : 'Choisissez une ville disponible en base ou utilisez votre localisation actuelle.'}
+            </p>
+
+            <input
+              className="start-modal-input"
+              value={citySearch}
+              onChange={(e) => setCitySearch(sanitizeSearchInput(e.target.value))}
+              placeholder={language === 'en' ? 'Search city...' : 'Rechercher une ville...'}
+            />
+
+            <div className="start-modal-city-list">
+              {filteredCities.length === 0 ? (
+                <p className="start-modal-hint" style={{ padding: '10px 12px' }}>
+                  {language === 'en' ? 'No city found.' : 'Aucune ville trouvee.'}
+                </p>
+              ) : (
+                filteredCities.map((city: any) => (
+                  <button
+                    key={city.name}
+                    className={`start-modal-city-item ${selectedCityName === city.name ? 'active' : ''}`}
+                    onClick={() => setSelectedCityName(city.name)}
+                  >
+                    {city.name}
+                  </button>
+                ))
+              )}
+            </div>
+
+            {startError && <p className="start-modal-error">{startError}</p>}
+
+            <div className="start-modal-actions">
+              <button className="start-modal-btn start-modal-btn-secondary" onClick={handleChooseCity}>
+                {language === 'en' ? 'Choose this city' : 'Choisir cette ville'}
+              </button>
+              <button
+                className="start-modal-btn start-modal-btn-primary"
+                onClick={handleUseLocation}
+                disabled={loadingLocation}
+              >
+                {loadingLocation
+                  ? (language === 'en' ? 'Locating...' : 'Localisation...')
+                  : (language === 'en' ? 'Use my location' : 'Utiliser ma localisation')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

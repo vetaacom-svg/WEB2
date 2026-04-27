@@ -32,10 +32,13 @@ import OutOfZoneView from './views/OutOfZoneView';
 import TicketsList from './views/TicketsList';
 import TicketNew from './views/TicketNew';
 import TicketChat from './views/TicketChat';
+<<<<<<< HEAD
 import AdminLiveMapRoute from './views/AdminLiveMapRoute';
+=======
+>>>>>>> f208f70 (final)
 import { CategoryID, Store, Product, Language, CartItem } from './types';
 import { TRANSLATIONS } from './constants';
-import { safeGetItem, safeSetItem } from './lib/storage';
+import { safeGetItem, safeRemoveItem, safeSetItem } from './lib/storage';
 
 function WelcomePage() {
   const { language, user } = useVeetaa();
@@ -94,15 +97,6 @@ function HomePage() {
   const ctx = useVeetaa();
   const navigate = useNavigate();
   if (ctx.isBlocked && ctx.user) return <Navigate to="/blocked" replace />;
-  if (ctx.userLocation && ctx.isOutOfZone) {
-    return (
-      <OutOfZoneView
-        language={ctx.language}
-        currentCity={ctx.userLocation.city}
-        onContactSupport={() => navigate('/settings/help')}
-      />
-    );
-  }
 
   return (
     <Home
@@ -120,7 +114,16 @@ function HomePage() {
       userLocation={ctx.userLocation}
       loadingLocation={ctx.loadingLocation}
       locationError={ctx.locationError}
-      onRefreshLocation={ctx.refreshLocation}
+      onRefreshLocation={async () => {
+        safeRemoveItem('veetaa_manual_city_override');
+        await ctx.refreshLocation();
+      }}
+      deliveryZones={ctx.deliveryZones}
+      onSelectCity={(city) => {
+        ctx.setUserLocation(city);
+        safeSetItem('userLocation', JSON.stringify(city));
+        safeSetItem('veetaa_manual_city_override', '1');
+      }}
     />
   );
 }
@@ -463,10 +466,11 @@ function SettingsPage() {
 
 function AppContent() {
   const ctx = useVeetaa();
-  const { language, categoriesData, subCategoriesData, storesWithProducts, user, userLocation, isOutOfZone, handleLogout, handleProfileSave } = ctx;
+  const { language, userLocation } = ctx;
   const navigate = useNavigate();
   const location = useLocation();
 
+<<<<<<< HEAD
   useEffect(() => {
     const publicPaths = ['/out-of-zone', '/blocked', '/vpn-blocked', '/settings/help', '/login', '/signup', '/email-otp-verify', '/permissions'];
     if (isOutOfZone && !publicPaths.includes(location.pathname)) {
@@ -474,6 +478,8 @@ function AppContent() {
     }
   }, [isOutOfZone, location.pathname, navigate]);
 
+=======
+>>>>>>> f208f70 (final)
   return (
     <NetworkWrapper language={language}>
       <Routes>
@@ -511,7 +517,10 @@ function AppContent() {
           <Route path="/tickets/new" element={<TicketNewRoute />} />
           <Route path="/tickets/:id" element={<TicketChatRoute />} />
         </Route>
+<<<<<<< HEAD
         <Route path="/admin/carte-live" element={<AdminLiveMapRoute />} />
+=======
+>>>>>>> f208f70 (final)
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </NetworkWrapper>

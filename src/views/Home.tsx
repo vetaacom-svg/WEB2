@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { TRANSLATIONS } from '../constants';
 import { CategoryID, Language, Product, Store } from '../types';
 import { Heart, Star, MapPin, Search, ChevronDown, Loader2, Navigation, AlertCircle, ShoppingBag, LayoutGrid, Zap, Grid, List, ChevronRight } from 'lucide-react';
 import { catalogRepo } from '../data/repos/catalogRepo';
 import { useCatalog } from '../context/CatalogContext';
+import { sanitizeSearchInput } from '../lib/security';
 
 interface HomeProps {
   onSelectCategory: (id: CategoryID) => void;
@@ -22,6 +24,8 @@ interface HomeProps {
   loadingLocation: boolean;
   locationError: string | null;
   onRefreshLocation: () => void;
+  deliveryZones?: { id: string; name: string; center_lat: number; center_lng: number }[];
+  onSelectCity?: (city: { lat: number; lon: number; city: string }) => void;
 }
 
 const Home: React.FC<HomeProps> = ({
@@ -39,7 +43,9 @@ const Home: React.FC<HomeProps> = ({
   userLocation,
   loadingLocation,
   locationError,
-  onRefreshLocation
+  onRefreshLocation,
+  deliveryZones = [],
+  onSelectCity
 }) => {
   const { searchProducts, hasMoreStores, loadMoreStores, loadingCatalog, newProductsData, reloadCatalog, catalogLoadError } = useCatalog();
 
@@ -122,8 +128,96 @@ const Home: React.FC<HomeProps> = ({
   }, [searchQuery, searchProducts]);
 
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [showCityModal, setShowCityModal] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
   const storeSource = stores && stores.length > 0 ? stores : [];
   const categorySource = categories && categories.length > 0 ? categories : [];
+  const cityOptions = useMemo(
+    () =>
+      (deliveryZones || [])
+        .filter((z: any) => z?.name)
+        .map((z: any) => ({
+          id: String(z.id),
+          name: String(z.name),
+          lat: Number(z.center_lat),
+          lon: Number(z.center_lng),
+        }))
+        .filter((z: any) => Number.isFinite(z.lat) && Number.isFinite(z.lon))
+        .sort((a: any, b: any) => a.name.localeCompare(b.name, 'fr')),
+    [deliveryZones]
+  );
+  const filteredCityOptions = useMemo(() => {
+    const q = citySearch.trim().toLowerCase();
+    if (!q) return cityOptions;
+    return cityOptions.filter((city: any) => city.name.toLowerCase().includes(q));
+  }, [cityOptions, citySearch]);
+
+  const cityModal = showCityModal
+    ? createPortal(
+      <div className="fixed inset-0 z-[9999] bg-black/55 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCityModal(false)}>
+        <div className="w-full max-w-xl rounded-3xl border border-orange-200/60 bg-white shadow-2xl p-5 sm:p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 m-0">
+              {language === 'en' ? 'Choose your city' : 'Choisissez votre ville'}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowCityModal(false)}
+              className="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-black"
+            >
+              ×
+            </button>
+          </div>
+
+          <input
+            value={citySearch}
+            onChange={(e) => setCitySearch(sanitizeSearchInput(e.target.value))}
+            placeholder={language === 'en' ? 'Search city...' : 'Rechercher une ville...'}
+            className="w-full mb-4 px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-300"
+          />
+
+          <div className="max-h-[360px] overflow-auto rounded-2xl border border-slate-200 divide-y divide-slate-100">
+            {filteredCityOptions.length === 0 ? (
+              <p className="p-4 text-sm text-slate-500 m-0">
+                {language === 'en' ? 'No city found.' : 'Aucune ville trouvee.'}
+              </p>
+            ) : (
+              filteredCityOptions.map((city: any) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  className="w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors"
+                  onClick={() => {
+                    onSelectCity?.({ lat: city.lat, lon: city.lon, city: city.name });
+                    setShowCityModal(false);
+                  }}
+                >
+                  <p className="m-0 font-bold text-slate-900">{city.name}</p>
+                  <p className="m-0 text-xs text-slate-500">
+                    {language === 'en' ? 'Available delivery zone' : 'Zone de livraison disponible'}
+                  </p>
+                </button>
+              ))
+            )}
+          </div>
+
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                onRefreshLocation();
+                setShowCityModal(false);
+              }}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold hover:bg-orange-600 transition-colors"
+            >
+              {language === 'en' ? 'Use my location' : 'Utiliser ma localisation'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    )
+    : null;
 
   /** Si le catalogue ne répond pas, évite le squelette infini : après 14 s on affiche l’UI + message. */
   const [catalogLoadStuck, setCatalogLoadStuck] = useState(false);
@@ -281,7 +375,15 @@ const Home: React.FC<HomeProps> = ({
         <main className="veetaa-main-desktop">
           {!isExplorerMode && (
             <section className="veetaa-command-center">
-              <div className="veetaa-location-bar">
+              <div
+                className="veetaa-location-bar cursor-pointer"
+                onClick={() => setShowCityModal(true)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') setShowCityModal(true);
+                }}
+              >
                 <div className="p-3 bg-orange-100 rounded-xl text-orange-600">
                   <MapPin size={24} />
                 </div>
@@ -289,7 +391,15 @@ const Home: React.FC<HomeProps> = ({
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{t('deliveringTo')}</p>
                   <p className="text-base font-bold truncate">{userLocation?.city || t('unavailable')}</p>
                 </div>
-                <button onClick={onRefreshLocation} className="p-3 hover:bg-slate-100 rounded-xl transition-colors"><Navigation size={20} className="text-slate-600" /></button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRefreshLocation();
+                  }}
+                  className="p-3 hover:bg-slate-100 rounded-xl transition-colors"
+                >
+                  <Navigation size={20} className="text-slate-600" />
+                </button>
               </div>
 
               <div className="veetaa-search-wrap">
@@ -297,7 +407,7 @@ const Home: React.FC<HomeProps> = ({
                 <input
                   type="text"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => setSearchQuery(sanitizeSearchInput(e.target.value))}
                   placeholder={t('searchPlaceholder')}
                   className="veetaa-search-input"
                 />
@@ -453,6 +563,8 @@ const Home: React.FC<HomeProps> = ({
           )}
         </main>
       </div>
+
+      {cityModal}
     </div>
   );
 };

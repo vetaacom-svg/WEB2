@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Product, CategoryID, Language } from '../types';
 import { Camera, FileText, ShoppingCart, CheckCircle2, X, ZoomIn, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
+import { sanitizePlainText } from '../lib/security';
 
 // Icône personnalisée Coupe d'Hygie pour la zone d'upload
 const HygieiaIcon = ({ className }: { className?: string }) => (
@@ -274,7 +275,7 @@ const ProductOrderView: React.FC<ProductOrderViewProps> = ({ product, category, 
                 className="w-full p-6 bg-white border border-slate-200 rounded-[2rem] focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none min-h-[140px] font-bold text-sm leading-relaxed shadow-sm transition-all"
                 placeholder={customNotePlaceholder}
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => setText(sanitizePlainText(e.target.value, 1200))}
               />
             </div>
           )}

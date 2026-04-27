@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useMemo } from 'react';
-import { isLocationServiceable, getCityFromCoordinates, findNearestCity } from '../lib/location';
+import { isLocationServiceable, getCityFromCoordinates, findNearestCity, calculateDistance } from '../lib/location';
 import { subscribeToSettings, AppSettings } from '../lib/settingsService';
 import { safeGetItem, safeRemoveItem, safeSetItem } from '../lib/storage';
+import { catalogRepo } from '../data/repos/catalogRepo';
+import { DeliveryZone } from '../types';
+
+const MANUAL_CITY_OVERRIDE_KEY = 'veetaa_manual_city_override';
 
 export const fetchUserLocation = async (): Promise<{ lat: number; lon: number; city: string } | null> => {
   return new Promise((resolve) => {
@@ -29,6 +33,8 @@ interface LocationContextValue {
   refreshLocation: () => Promise<void>;
   isOutOfZone: boolean;
   appSettings: AppSettings;
+  deliveryZones: DeliveryZone[];
+  activeZone: DeliveryZone | null;
 }
 
 const LocationContext = createContext<LocationContextValue | null>(null);
@@ -42,8 +48,14 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     delivery_fee_per_km: 0,
     delivery_zone: 'all_morocco',
   });
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
 
   useEffect(() => {
+    // Fetch delivery zones on mount
+    catalogRepo.deliveryZones().then(({ data }) => {
+      if (data) setDeliveryZones(data as DeliveryZone[]);
+    });
+
     return subscribeToSettings((settings) => {
       if (settings) setAppSettings(settings);
     });
@@ -55,6 +67,7 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     if (loc) {
       setUserLocation(loc);
       safeSetItem('userLocation', JSON.stringify(loc));
+      safeRemoveItem(MANUAL_CITY_OVERRIDE_KEY);
       setLocationError(null);
     } else {
       setLocationError('Unable to detect location');
@@ -64,6 +77,7 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Sync location on mount
   useEffect(() => {
+    const hasManualCityOverride = safeGetItem(MANUAL_CITY_OVERRIDE_KEY) === '1';
     const saved = safeGetItem('userLocation');
     if (saved) {
       try {
@@ -79,13 +93,37 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
         safeRemoveItem('userLocation');
       }
     }
-    refreshLocation();
+    if (!hasManualCityOverride) {
+      refreshLocation();
+    }
   }, [refreshLocation]);
 
-  const isOutOfZone = useMemo(() => {
-    if (loadingLocation || !userLocation) return false;
-    return !isLocationServiceable(userLocation.lat, userLocation.lon, appSettings.delivery_zone);
-  }, [userLocation, appSettings.delivery_zone, loadingLocation]);
+  const activeZone = useMemo(() => {
+    if (!userLocation || deliveryZones.length === 0) return null;
+    
+    // Find a zone where user is within the radius
+    for (const zone of deliveryZones) {
+      if (!zone.center_lat || !zone.center_lng || !zone.radius_km) continue;
+      
+      const distance = calculateDistance(
+        zone.center_lat, 
+        zone.center_lng, 
+        userLocation.lat, 
+        userLocation.lon
+      );
+      
+      if (distance <= zone.radius_km) {
+        return zone;
+      }
+    }
+    
+    // Fallback: Check if city name matches exactly (for edge cases)
+    const exactMatch = deliveryZones.find(z => z.name.toLowerCase() === userLocation.city.toLowerCase());
+    return exactMatch || null;
+  }, [userLocation, deliveryZones]);
+
+  // NO MORE BLOCKAGE! We just filter stores.
+  const isOutOfZone = false;
 
   const value = {
     userLocation,
@@ -94,7 +132,9 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     locationError,
     refreshLocation,
     isOutOfZone,
-    appSettings
+    appSettings,
+    deliveryZones,
+    activeZone
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;

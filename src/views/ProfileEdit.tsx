@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserProfile, Language } from '../types';
 import { Mail, Phone as PhoneIcon, User } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
+import { sanitizeEmailInput, sanitizePhoneInput, sanitizePlainText } from '../lib/security';
 
 interface ProfileEditProps {
   user: UserProfile | null;
@@ -43,7 +44,11 @@ const ProfileEdit: React.FC<ProfileEditProps> = ({ user, language, onBack, onSav
 
     try {
       setLoading(true);
-      await onSave(fullName.trim(), email.trim(), phone.trim());
+      await onSave(
+        sanitizePlainText(fullName, 80).trim(),
+        sanitizeEmailInput(email),
+        sanitizePhoneInput(phone).trim()
+      );
       setSuccess(true);
       setTimeout(() => {
         onBack();
@@ -86,7 +91,7 @@ const ProfileEdit: React.FC<ProfileEditProps> = ({ user, language, onBack, onSav
             <input
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => setFullName(sanitizePlainText(e.target.value, 80))}
               placeholder={t('enterName')}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-lg sm:rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all font-medium text-slate-800 text-sm"
             />
@@ -103,7 +108,7 @@ const ProfileEdit: React.FC<ProfileEditProps> = ({ user, language, onBack, onSav
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => setEmail(sanitizeEmailInput(e.target.value))}
               placeholder={t('enterEmail')}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-lg sm:rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all font-medium text-slate-800 text-sm"
             />
@@ -120,7 +125,7 @@ const ProfileEdit: React.FC<ProfileEditProps> = ({ user, language, onBack, onSav
             <input
               type="tel"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
               placeholder={t('enterPhone')}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white border border-slate-200 rounded-lg sm:rounded-2xl focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition-all font-medium text-slate-800 text-sm"
             />

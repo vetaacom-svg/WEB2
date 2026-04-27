@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Store, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { Search, X, Filter, Star, LayoutGrid, Grid3X3 } from 'lucide-react';
+import { sanitizeSearchInput } from '../lib/security';
 
 interface AllStoresProps {
   stores: Store[];
@@ -84,7 +85,7 @@ const AllStores: React.FC<AllStoresProps> = ({ stores, language, categories = []
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => setSearchQuery(sanitizeSearchInput(e.target.value))}
             placeholder={t('searchPlaceholder')}
             className={`w-full bg-slate-50 border border-slate-100 rounded-2xl py-3.5 ${language === 'ar' ? 'pr-12 pl-4' : 'pl-12 pr-4'} text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all shadow-sm`}
           />

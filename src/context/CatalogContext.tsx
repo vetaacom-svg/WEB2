@@ -4,6 +4,7 @@ import { SUPABASE_CONFIG } from '../config/supabase-config';
 import { catalogRepo } from '../data/repos/catalogRepo';
 import { CategoryID, Store, Product } from '../types';
 import { CATEGORY_COLORS } from '../constants';
+import { useLocation } from './LocationContext';
 
 export interface CatalogContextValue {
   categoriesData: { id: CategoryID; name: string; icon?: string | null; color?: string }[];
@@ -149,6 +150,7 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
     deliveryIncludedKm: s.delivery_included_km ?? null,
     deliveryFeePerKm: s.delivery_fee_per_km ?? null,
     deliveryFixedFee: s.delivery_fixed_fee ?? null,
+    zone_id: s.zone_id,
     category: s.category_id || 'food',  // Utilise category_id du SQL
     sub_category: s.sub_category ?? undefined,
     type: s.type || 'products'  // Utilise type du SQL
@@ -503,11 +505,22 @@ export const CatalogProvider: React.FC<{ children: ReactNode; language: string }
     [mapProduct]
   );
 
+  const { activeZone } = useLocation();
+
+  const storesWithProducts = useMemo(() => {
+    // If we have an active zone, only show stores belonging to that zone
+    if (activeZone) {
+      return storesData.filter(s => String(s.zone_id) === String(activeZone.id));
+    }
+    // If location is blocked or out of any zone, show nothing (or we could show all, but we follow the concept)
+    return [];
+  }, [storesData, activeZone]);
+
   const value = useMemo(() => ({
     categoriesData,
     storesData,
     subCategoriesData,
-    storesWithProducts: storesData,
+    storesWithProducts,
     newProductsData,
     loadingCatalog,
     loadMoreStores,

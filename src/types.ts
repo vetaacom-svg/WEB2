@@ -58,6 +58,15 @@ export interface Product {
   userFieldLabels?: Record<string, string>;
 }
 
+export interface DeliveryZone {
+  id: string;
+  name: string;
+  radius_km: number;
+  center_lat: number;
+  center_lng: number;
+  is_active: boolean;
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -91,6 +100,7 @@ export interface Store {
   deliveryIncludedKm?: number;
   deliveryFeePerKm?: number;
   deliveryFixedFee?: number;
+  zone_id?: string;
 }
 
 export interface CartItem {

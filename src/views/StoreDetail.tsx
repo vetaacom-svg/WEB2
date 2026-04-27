@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, Star, ChevronLeft, ChevronRight, X, ZoomIn, ShoppingBag, Clock, MapPin, Search, ThumbsUp, Info, Camera, Send, Share2, Loader2, List } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 import { useCatalog } from '../context/CatalogContext';
+import { sanitizePlainText } from '../lib/security';
 
 interface StoreDetailProps {
   store: Store;
@@ -307,7 +308,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({
                   <label className="text-[10px] md:text-[12px] font-black text-slate-400 uppercase tracking-widest px-2">{store.userFieldLabels?.custom_note || t('writeOrderPlaceholder')}</label>
                   <textarea
                     value={customOrderText}
-                    onChange={(e) => setCustomOrderText(e.target.value)}
+                    onChange={(e) => setCustomOrderText(sanitizePlainText(e.target.value, 1200))}
                     placeholder={store.userFieldLabels?.custom_note_placeholder || t('writeOrderPlaceholder')}
                     className="w-full p-4 md:p-8 bg-slate-50 border-none rounded-2xl md:rounded-[2.5rem] text-sm md:text-lg font-bold text-slate-900 focus:ring-4 focus:ring-orange-100 transition-all min-h-[100px] md:min-h-[200px]"
                   />
@@ -364,7 +365,7 @@ const StoreDetail: React.FC<StoreDetailProps> = ({
               </div>
 
               <button
-                onClick={() => onCheckout?.(customOrderText, customOrderImages, customOrderPrice)}
+                onClick={() => onCheckout?.(sanitizePlainText(customOrderText, 1200), customOrderImages, customOrderPrice)}
                 disabled={!customOrderText && customOrderImages.length === 0}
                 className="w-full py-6 bg-slate-900 text-white rounded-[2rem] text-xl font-black uppercase tracking-tighter hover:bg-orange-600 active:scale-95 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
               >

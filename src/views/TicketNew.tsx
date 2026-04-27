@@ -4,6 +4,7 @@ import { ArrowLeft, Ticket, Send, AlertTriangle } from 'lucide-react';
 import { UserProfile, Language } from '../types';
 import { createTicket } from '../lib/ticketService';
 import { TRANSLATIONS } from '../constants';
+import { sanitizePlainText } from '../lib/security';
 
 interface TicketNewProps {
   language: Language;
@@ -22,7 +23,8 @@ const TicketNew: React.FC<TicketNewProps> = ({ language, user, onBack }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim()) return;
+    const safeDescription = sanitizePlainText(description, 2000).trim();
+    if (!safeDescription) return;
 
     setLoading(true);
     setError(null);
@@ -31,7 +33,7 @@ const TicketNew: React.FC<TicketNewProps> = ({ language, user, onBack }) => {
       user.id!,
       user.fullName,
       user.phone || '',
-      description.trim()
+      safeDescription
     );
 
     setLoading(false);
@@ -70,7 +72,7 @@ const TicketNew: React.FC<TicketNewProps> = ({ language, user, onBack }) => {
             <div className="relative">
               <textarea
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(sanitizePlainText(e.target.value, 2000))}
                 placeholder="Expliquez en détail votre problème ou vôtre demande..."
                 className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl md:rounded-3xl p-4 md:p-6 min-h-[150px] md:min-h-[200px] outline-none focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 transition-all resize-y text-slate-800 placeholder:text-slate-400 text-sm md:text-[15px] font-medium leading-relaxed shadow-inner"
               ></textarea>

@@ -6,6 +6,7 @@ import { TRANSLATIONS } from '../constants';
 import { fetchTicketMessages, sendTicketMessage, SupportMessage, fetchUserTickets, SupportTicket } from '../lib/ticketService';
 import { supabase } from '../lib/supabase-client';
 import { Db } from '../data/tables';
+import { sanitizePlainText } from '../lib/security';
 
 interface TicketChatProps {
   language: Language;
@@ -86,10 +87,11 @@ const TicketChat: React.FC<TicketChatProps> = ({ language, user, onBack }) => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !id) return;
+    const safeMessage = sanitizePlainText(newMessage, 1200).trim();
+    if (!safeMessage || !id) return;
 
     setSending(true);
-    const success = await sendTicketMessage(id, newMessage.trim());
+    const success = await sendTicketMessage(id, safeMessage);
     if (success) {
       setNewMessage('');
       const msgs = await fetchTicketMessages(id);
@@ -178,7 +180,7 @@ const TicketChat: React.FC<TicketChatProps> = ({ language, user, onBack }) => {
           <form onSubmit={handleSend} className="max-w-2xl mx-auto flex items-end gap-3 relative">
             <textarea
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => setNewMessage(sanitizePlainText(e.target.value, 1200))}
               onKeyDown={(e) => {
                  if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
