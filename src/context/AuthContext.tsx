@@ -287,11 +287,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     navigate('/email-otp-verify');
   }, [navigate]);
 
-  const handleSignupSuccess = useCallback((name: string, email: string) => {
+  const handleSignupSuccess = useCallback((name: string, email: string, _password?: string, phone?: string) => {
     setPendingEmail(email);
     setPendingName(name);
-    setPendingOtpPurpose('email_verify');
-    navigate('/email-otp-verify');
+    setPendingPhone(phone || '');
+    navigate('/permissions');
   }, [navigate]);
 
   const handleEmailOtpVerified = useCallback(() => {

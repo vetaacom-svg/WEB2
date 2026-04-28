@@ -1,3 +1,155 @@
+/* OTP card style inspired by Uiverse pattern */
+.otp-form-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: space-around;
+  width: min(460px, 96vw);
+  background: linear-gradient(165deg, rgba(22, 22, 22, 0.97), rgba(11, 11, 11, 0.97));
+  border-radius: 22px;
+  padding: 30px 26px 24px;
+  border: 1px solid rgba(212, 175, 55, 0.36);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.62), 0 0 38px rgba(212, 175, 55, 0.17);
+  position: relative;
+  z-index: 3010;
+}
+
+.otp-title {
+  font-size: 34px;
+  font-weight: bold;
+  color: #f5d56c;
+  line-height: 1;
+}
+
+.otp-message {
+  color: #9ca3af;
+  font-size: 15px;
+  margin-top: 10px;
+  text-align: center;
+  max-width: 360px;
+}
+
+.otp-inputs {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.otp-inputs input {
+  width: 46px;
+  height: 56px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #f9fafb;
+  background: rgba(255, 255, 255, 0.04);
+  transition: transform 0.14s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.otp-inputs input:focus {
+  border: 1px solid #f5d56c;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+  outline: none;
+  transform: translateY(-1px) scale(1.04);
+}
+
+.otp-inputs input.otp-digit-filled {
+  border-color: rgba(245, 213, 108, 0.85);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.16);
+  animation: otpDigitPop 0.2s ease-out;
+}
+
+.otp-action {
+  margin-top: 24px;
+  padding: 14px 20px;
+  min-height: 52px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #f5d56c 0%, #d4af37 45%, #b8860b 100%);
+  color: #0b0b0b;
+  cursor: pointer;
+  align-self: stretch;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.otp-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.otp-resend {
+  margin-top: 10px;
+  background: transparent;
+  border: none;
+  color: #f5d56c;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.otp-resend:hover:not(:disabled) {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.otp-resend:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.otp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  animation: otpOverlayFadeIn 0.2s ease-out;
+}
+
+.otp-overlay-card {
+  width: min(500px, 96vw);
+  animation: otpModalPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes otpOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes otpModalPopIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes otpDigitPop {
+  0% { transform: scale(0.92); }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@media (max-width: 520px) {
+  .otp-title {
+    font-size: 28px;
+  }
+  .otp-inputs {
+    gap: 8px;
+  }
+  .otp-inputs input {
+    width: 40px;
+    height: 50px;
+  }
+}
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
@@ -704,7 +856,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--veetaa-bg);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(212, 175, 55, 0.2), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(212, 175, 55, 0.14), transparent 42%),
+    linear-gradient(140deg, #070707 0%, #0f0f0f 40%, #050505 100%);
   padding: 40px 20px;
   position: relative;
   overflow: hidden;
@@ -713,21 +868,36 @@ body {
 .veetaa-login-page::before {
   content: "";
   position: absolute;
-  top: -10%;
-  left: -10%;
-  width: 40%;
-  height: 40%;
-  background: radial-gradient(circle, var(--veetaa-primary-soft) 0%, transparent 70%);
+  top: 10%;
+  right: -8%;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, rgba(212, 175, 55, 0) 72%);
+  filter: blur(4px);
+  z-index: 0;
+}
+
+.veetaa-login-page::after {
+  content: "";
+  position: absolute;
+  bottom: -8%;
+  left: -8%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0) 70%);
+  filter: blur(5px);
   z-index: 0;
 }
 
 .veetaa-login-card {
   width: 100%;
-  max-width: 480px;
-  background: var(--veetaa-white);
+  max-width: 520px;
+  background: linear-gradient(165deg, rgba(22, 22, 22, 0.95), rgba(12, 12, 12, 0.95));
   padding: 56px;
-  border-radius: var(--veetaa-radius-xl);
-  box-shadow: var(--veetaa-shadow-premium);
+  border-radius: 32px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6), 0 0 45px rgba(212, 175, 55, 0.12);
+  backdrop-filter: blur(10px);
   position: relative;
   z-index: 10;
   animation: fadeInScale 0.8s cubic-bezier(0.16, 1, 0.3, 1);
@@ -739,15 +909,16 @@ body {
 }
 
 .veetaa-login-title {
-  font-size: 2.25rem;
+  font-size: 2.4rem;
   font-weight: 900;
-  color: var(--veetaa-navy);
+  color: #f8f3dc;
   letter-spacing: -0.05em;
   margin-bottom: 12px;
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.25);
 }
 
 .veetaa-login-subtitle {
-  color: var(--veetaa-slate);
+  color: #9ca3af;
   font-weight: 600;
   font-size: 1rem;
 }
@@ -767,7 +938,7 @@ body {
 .veetaa-label {
   font-size: 0.75rem;
   font-weight: 900;
-  color: var(--veetaa-navy);
+  color: #d4af37;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   padding-left: 4px;
@@ -782,7 +953,7 @@ body {
   left: 20px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--veetaa-slate);
+  color: #c7a746;
   width: 20px;
   height: 20px;
 }
@@ -790,25 +961,29 @@ body {
 .veetaa-input {
   width: 100%;
   height: 60px;
-  background: var(--veetaa-bg);
-  border: 2px solid transparent;
-  border-radius: var(--veetaa-radius);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 16px;
   padding: 0 24px 0 52px;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--veetaa-navy);
+  color: #f3f4f6;
   transition: all 0.3s ease;
 }
 
 .veetaa-input:focus {
-  background: var(--veetaa-white);
-  border-color: var(--veetaa-primary);
-  box-shadow: 0 0 0 4px var(--veetaa-primary-soft);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: #d4af37;
+  box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.14);
   outline: none;
 }
 
+.veetaa-input::placeholder {
+  color: #6b7280;
+}
+
 .veetaa-error {
-  color: #ef4444;
+  color: #f87171;
   font-size: 0.85rem;
   font-weight: 700;
   margin-top: 8px;
@@ -818,24 +993,24 @@ body {
 .veetaa-btn-primary {
   width: 100%;
   height: 64px;
-  background: var(--veetaa-navy);
-  color: var(--veetaa-white);
+  background: linear-gradient(135deg, #f5d56c 0%, #d4af37 45%, #b8860b 100%);
+  color: #0b0b0b;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 1.1rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  box-shadow: var(--veetaa-shadow);
+  box-shadow: 0 18px 38px -14px rgba(212, 175, 55, 0.55);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   margin-top: 12px;
 }
 
 .veetaa-btn-primary:hover:not(:disabled) {
-  background: var(--veetaa-primary);
+  filter: brightness(1.04);
   transform: translateY(-3px);
-  box-shadow: var(--veetaa-shadow-lg);
+  box-shadow: 0 22px 44px -14px rgba(212, 175, 55, 0.62);
 }
 
 .veetaa-btn-primary:active:not(:disabled) {
@@ -858,11 +1033,11 @@ body {
 .veetaa-login-link-p {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--veetaa-slate);
+  color: #9ca3af;
 }
 
 .veetaa-link {
-  color: var(--veetaa-primary);
+  color: #f5d56c;
   font-weight: 800;
   background: none;
   border: none;
@@ -888,14 +1063,15 @@ body {
   align-items: center;
   justify-content: center;
   padding: 0 20px;
-  background: var(--veetaa-navy);
-  color: var(--veetaa-white);
+  background: #0f172a;
+  color: #f5d56c;
   font-weight: 800;
   font-size: 0.95rem;
-  border-radius: var(--veetaa-radius);
+  border-radius: 16px;
   letter-spacing: 0.05em;
   white-space: nowrap;
   min-height: 60px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
 }
 
 .veetaa-signup-phone-row .veetaa-input-wrap {
@@ -908,6 +1084,7 @@ body {
   height: 20px;
   flex-shrink: 0;
 }
+
 
 /* === UTILITIES === */
 .no-scrollbar::-webkit-scrollbar {

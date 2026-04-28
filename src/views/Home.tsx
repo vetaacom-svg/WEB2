@@ -28,6 +28,15 @@ interface HomeProps {
   onSelectCity?: (city: { lat: number; lon: number; city: string }) => void;
 }
 
+const STORE_IMAGE_FALLBACK = '/store-placeholder.svg';
+const withStoreFallback = (src?: string | null) => (src && src.trim() ? src : STORE_IMAGE_FALLBACK);
+const onStoreImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  if (img.src.includes(STORE_IMAGE_FALLBACK)) return;
+  img.onerror = null;
+  img.src = STORE_IMAGE_FALLBACK;
+};
+
 const Home: React.FC<HomeProps> = ({
   onSelectCategory,
   onSelectStore,
@@ -588,7 +597,12 @@ const SearchStoreCard = React.memo<{ store: Store; productsLabel: string; onSele
   ({ store, productsLabel, onSelectStore }) => (
     <button onClick={() => onSelectStore(store)} className="veetaa-store-card-mini group">
       <div className="overflow-hidden bg-slate-100">
-        <img src={store.image} className="w-full h-24 object-cover group-hover:scale-110 transition-transform duration-500" alt={store.name} />
+        <img
+          src={withStoreFallback(store.image)}
+          onError={onStoreImageError}
+          className="w-full h-24 object-cover group-hover:scale-110 transition-transform duration-500"
+          alt={store.name}
+        />
       </div>
       <div className="p-3">
         <h4 className="font-bold text-[12px] line-clamp-1">{store.name}</h4>
@@ -602,7 +616,12 @@ const HomeStoreCard = React.memo<{ store: Store; viewStoreLabel: string; onSelec
   ({ store, viewStoreLabel, onSelectStore, showNewBadge }) => (
     <div onClick={() => onSelectStore(store)} className="veetaa-store-card group cursor-pointer border-none !shadow-lg hover:!shadow-2xl transition-all h-full flex flex-col">
       <div className="veetaa-store-card-img-wrap overflow-hidden flex-shrink-0">
-        <img src={store.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={store.name} />
+        <img
+          src={withStoreFallback(store.image)}
+          onError={onStoreImageError}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+          alt={store.name}
+        />
         {showNewBadge && <span className="absolute top-4 left-4 bg-orange-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg">NEW</span>}
         <div className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-md rounded-xl shadow-sm hover:bg-orange-600 hover:text-white transition-colors">
           <Heart size={18} />

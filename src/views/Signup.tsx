@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Phone, Mail, ArrowRight, Lock } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 import { Language } from '../types';
 import { supabase, getEmailRedirectUrl } from '../lib/supabase-client';
 import { Db } from '../data/tables';
+import { normalizeMoroccoPhone, phoneToSyntheticEmail } from '../lib/authIdentity';
+import { sanitizeEmailInput, sanitizePlainText } from '../lib/security';
+import OtpVerificationCard from '../components/OtpVerificationCard';
 
 interface SignupProps {
   language: Language;
@@ -16,70 +19,165 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [verifiedPhoneE164, setVerifiedPhoneE164] = useState('');
+  const [resendSecondsLeft, setResendSecondsLeft] = useState(0);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const t = (key: string) => TRANSLATIONS[language][key] || key;
 
-  const validateAndSubmit = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (resendSecondsLeft <= 0) return;
+    const timer = window.setTimeout(() => setResendSecondsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendSecondsLeft]);
+
+  const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim().length < 3) {
+    if (sanitizePlainText(name, 80).trim().length < 3) {
       setError(t('enterFullName'));
       return;
     }
-    if (!email || !email.includes('@')) {
-      setError(t('invalidEmail'));
+    const cleanEmail = sanitizeEmailInput(email);
+    if (cleanEmail && !cleanEmail.includes('@')) {
+      setError(t('invalidEmail') || 'Email invalide');
       return;
     }
     if (password.length < 6) {
       setError(t('passwordTooShort'));
       return;
     }
-    let phoneE164 = '';
-    if (phone) {
-      const cleanPhone = phone.replace(/\s/g, '');
-      if (cleanPhone.length !== 9) {
-        setError(t('phoneError9Digits'));
+    const phoneInfo = normalizeMoroccoPhone(phone);
+    if (!phoneInfo) {
+      setError(t('phoneError9Digits'));
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/send-phone-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phoneInfo.e164 }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      setIsLoading(false);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError('Endpoint OTP introuvable. Lancez Vite avec la configuration OTP ou deployez sur Vercel.');
+          return;
+        }
+        setError(body.error || 'Impossible d envoyer le code OTP.');
         return;
       }
-      phoneE164 = `+212${cleanPhone}`;
+      setVerifiedPhoneE164(phoneInfo.e164);
+      setOtpSent(true);
+      setResendSecondsLeft(30);
+    } catch {
+      setIsLoading(false);
+      setError('Erreur reseau pendant l envoi OTP.');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!verifiedPhoneE164 || resendSecondsLeft > 0) return;
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/send-phone-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: verifiedPhoneE164 }),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(body.error || 'Impossible d envoyer le code OTP.');
+        return;
+      }
+      setResendSecondsLeft(30);
+    } catch {
+      setError('Erreur reseau pendant l envoi OTP.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyOtpAndCreateAccount = async (code: string) => {
+    if (!code || code.length < 6) {
+      setError('Code OTP invalide.');
+      return;
     }
     setIsLoading(true);
     setError('');
     try {
-      const { data: existingUser } = await supabase.from(Db.profiles).select('email').eq('email', email).single();
-      if (existingUser) {
+      const verifyRes = await fetch('/api/verify-phone-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: verifiedPhoneE164, code }),
+      });
+      const verifyBody = (await verifyRes.json().catch(() => ({}))) as { error?: string };
+      if (!verifyRes.ok) {
         setIsLoading(false);
-        setError(t('emailAlreadyExists'));
+        setError(verifyBody.error || 'Code OTP invalide ou expire.');
         return;
       }
-    } catch (emailCheckError: unknown) {
-      const err = emailCheckError as { code?: string };
-      if (err.code !== 'PGRST116') console.error('Error checking email:', emailCheckError);
-    }
-    try {
+
+      const cleanEmail = sanitizeEmailInput(email);
+      const effectiveEmail = cleanEmail || phoneToSyntheticEmail(verifiedPhoneE164);
+      const cleanName = sanitizePlainText(name, 80).trim();
+
+      try {
+        const { data: existingUser } = await supabase.from(Db.profiles).select('email').eq('email', effectiveEmail).single();
+        if (existingUser) {
+          setIsLoading(false);
+          setError(t('emailAlreadyExists'));
+          return;
+        }
+      } catch (emailCheckError: unknown) {
+        const err = emailCheckError as { code?: string };
+        if (err.code !== 'PGRST116') console.error('Error checking email:', emailCheckError);
+      }
+
       const { data, error: signupError } = await supabase.auth.signUp({
-        email,
+        email: effectiveEmail,
         password,
         options: {
           emailRedirectTo: getEmailRedirectUrl(),
-          data: { full_name: name, phone: phoneE164 || null },
+          data: { full_name: cleanName, phone: verifiedPhoneE164, phone_verified: true },
         },
       });
+
       setIsLoading(false);
       if (signupError) {
         setError(signupError.message);
         return;
       }
-      if (data?.user) onSignup(name, email, password, phoneE164);
+      if (data?.user) onSignup(cleanName, effectiveEmail, password, verifiedPhoneE164);
     } catch {
       setIsLoading(false);
-      setError('Erreur lors de la création du compte.');
+      setError('Erreur lors de la verification OTP.');
     }
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhone(e.target.value.replace(/\D/g, '').slice(0, 9));
-    setError('');
+    const digits = e.target.value.replace(/\D/g, '');
+
+    // Supporte les saisies avec préfixe pays (212...) mais impose
+    // l'affichage final local en 10 chiffres: 0XXXXXXXXX.
+    let local = digits;
+    if (local.startsWith('212')) {
+      local = `0${local.slice(3)}`;
+    }
+
+    // Bloque les saisies trop longues au lieu de les accepter silencieusement.
+    if (local.length > 10) {
+      setError(t('phoneError9Digits'));
+      return;
+    }
+
+    setPhone(local);
+    if (error) setError('');
   };
 
   return (
@@ -90,7 +188,7 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
           <p className="veetaa-login-subtitle">{t('createAccount')}</p>
         </div>
 
-        <form onSubmit={validateAndSubmit} className="veetaa-login-form">
+        <form onSubmit={sendOtp} className="veetaa-login-form">
           <div className="veetaa-field">
             <label className="veetaa-label">{t('fullName')}</label>
             <div className="veetaa-input-wrap">
@@ -100,14 +198,14 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
                 placeholder={t('fullNamePlaceholder')}
                 className="veetaa-input"
                 value={name}
-                onChange={(e) => { setName(e.target.value); setError(''); }}
+                onChange={(e) => { setName(sanitizePlainText(e.target.value, 80)); setError(''); }}
                 required
               />
             </div>
           </div>
 
           <div className="veetaa-field">
-            <label className="veetaa-label">{t('email')}</label>
+            <label className="veetaa-label">{t('email')} ({t('optional')})</label>
             <div className="veetaa-input-wrap">
               <Mail className="veetaa-input-icon" aria-hidden />
               <input
@@ -115,14 +213,13 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
                 placeholder="exemple@email.com"
                 className="veetaa-input"
                 value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                required
+                onChange={(e) => { setEmail(sanitizeEmailInput(e.target.value)); setError(''); }}
               />
             </div>
           </div>
 
           <div className="veetaa-field">
-            <label className="veetaa-label">{t('phone')} ({t('optional')})</label>
+            <label className="veetaa-label">{t('phone')}</label>
             <div className="veetaa-signup-phone-row">
               <div className="veetaa-signup-phone-prefix">+212</div>
               <div className="veetaa-input-wrap">
@@ -133,6 +230,7 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
                   className="veetaa-input"
                   value={phone}
                   onChange={handlePhoneChange}
+                  required
                 />
               </div>
             </div>
@@ -155,10 +253,14 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
             {error && <p className="veetaa-error">{error}</p>}
           </div>
 
-          <button type="submit" disabled={isLoading} className="veetaa-btn-primary">
-            {isLoading ? t('loading') : t('createMyAccount')}
-            <ArrowRight className="veetaa-btn-icon" aria-hidden />
-          </button>
+          {!otpSent ? (
+            <button type="submit" disabled={isLoading} className="veetaa-btn-primary">
+              {isLoading ? t('loading') : 'Envoyer le code'}
+              <ArrowRight className="veetaa-btn-icon" aria-hidden />
+            </button>
+          ) : (
+            <></>
+          )}
         </form>
 
         <div className="veetaa-login-links">
@@ -170,6 +272,24 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
           </p>
         </div>
       </div>
+
+      {otpSent && (
+        <div className="otp-overlay" role="dialog" aria-modal="true">
+          <div className="otp-overlay-card">
+            <OtpVerificationCard
+              titleTop="OTP"
+              titleBottom="Verification Code"
+              message={`${t('enterCodeSentTo') || 'Entrez le code envoye a'} ${verifiedPhoneE164}`}
+              actionLabel={t('verify') || 'Verifier'}
+              isLoading={isLoading}
+              onVerify={verifyOtpAndCreateAccount}
+              onResend={handleResendOtp}
+              resendSecondsLeft={resendSecondsLeft}
+              resendLabel={t('resendCode') || 'Renvoyer code'}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Link, NavLink, useNavigate, useLocation, Outlet } from 'react-router-do
 import { ShoppingCart, User, Bell, Menu, X, ArrowLeft, Trash2, ChevronRight } from 'lucide-react';
 import { useVeetaa } from '../context/VeetaaContext';
 import Footer from './Footer';
+import logoImage from '../../logo.png';
 
 const NAV_KEYS = ['home', 'stores', 'orders', 'favorites'] as const;
 
@@ -81,7 +82,7 @@ export default function WebLayout() {
           <div className="veetaa-header-inner h-full">
             <div className="flex items-center gap-6">
               <Link to="/home" className="veetaa-header-logo group transition-transform hover:scale-105 active:scale-95">
-                <img src="/logo.png" alt="Veetaa" className="h-14 w-auto" />
+                <img src={logoImage} alt="Veetaa" className="h-14 w-auto object-contain" />
               </Link>
               
               <nav className="veetaa-nav-desktop">

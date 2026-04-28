@@ -12,6 +12,15 @@ interface AllStoresProps {
   onSelectStore: (store: Store) => void;
 }
 
+const STORE_IMAGE_FALLBACK = '/store-placeholder.svg';
+const withStoreFallback = (src?: string | null) => (src && src.trim() ? src : STORE_IMAGE_FALLBACK);
+const onStoreImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  if (img.src.includes(STORE_IMAGE_FALLBACK)) return;
+  img.onerror = null;
+  img.src = STORE_IMAGE_FALLBACK;
+};
+
 const AllStores: React.FC<AllStoresProps> = ({ stores, language, categories = [], subCategories, onSelectStore }) => {
   const t = (key: string) => TRANSLATIONS[language][key] || key;
   const [searchQuery, setSearchQuery] = useState('');
@@ -178,7 +187,13 @@ const StoreCard = React.memo<{ store: Store; categoryName: string; onSelectStore
       className="group bg-white rounded-[2rem] border border-slate-50 overflow-hidden shadow-sm hover:shadow-2xl transition-all active:scale-[0.97] cursor-pointer flex flex-col h-full relative"
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden shrink-0">
-        <img src={store.image} loading="lazy" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={store.name} />
+        <img
+          src={withStoreFallback(store.image)}
+          onError={onStoreImageError}
+          loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+          alt={store.name}
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
         
         {/* Category Pill Overlay */}
