@@ -21,6 +21,7 @@ const SIGN_IN_TIMEOUT_MS = 28_000;
 const AFTER_SIGN_IN_TIMEOUT_MS = 20_000;
 /** Filet si une exception empêche `finally` (très rare). */
 const LOADING_FAILSAFE_MS = SIGN_IN_TIMEOUT_MS + AFTER_SIGN_IN_TIMEOUT_MS + 5_000;
+const GENERIC_OTP_ERROR = 'Une erreur est survenue. Veuillez reessayer.';
 
 const Login: React.FC<LoginProps> = ({ language, onLogin, onGoToSignup, onForgotPassword, initialEmail = '', initialPassword = '' }) => {
   const [phone, setPhone] = useState('');
@@ -88,9 +89,8 @@ const Login: React.FC<LoginProps> = ({ language, onLogin, onGoToSignup, onForgot
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: phoneInfo.e164 }),
       });
-      const otpBody = (await otpRes.json().catch(() => ({}))) as { error?: string };
       if (!otpRes.ok) {
-        setError(otpBody.error || 'Impossible d envoyer le code OTP.');
+        setError(GENERIC_OTP_ERROR);
         return;
       }
 
@@ -120,14 +120,14 @@ const Login: React.FC<LoginProps> = ({ language, onLogin, onGoToSignup, onForgot
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: pendingPhoneE164 }),
       });
-      const otpBody = (await otpRes.json().catch(() => ({}))) as { error?: string };
       if (!otpRes.ok) {
-        setError(otpBody.error || 'Impossible d envoyer le code OTP.');
+        setError(GENERIC_OTP_ERROR);
         return;
       }
       setResendSecondsLeft(30);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur reseau');
+      console.error('OTP resend failed:', err);
+      setError(GENERIC_OTP_ERROR);
     } finally {
       safeSetLoading(false);
     }
@@ -150,9 +150,8 @@ const Login: React.FC<LoginProps> = ({ language, onLogin, onGoToSignup, onForgot
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: pendingPhoneE164, code }),
       });
-      const verifyBody = (await verifyRes.json().catch(() => ({}))) as { error?: string };
       if (!verifyRes.ok) {
-        setError(verifyBody.error || 'Code OTP invalide ou expire.');
+        setError('Code OTP invalide ou expire.');
         return;
       }
 

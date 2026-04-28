@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!isConfigured()) {
-    return res.status(500).json({ error: 'Twilio is not configured' });
+    return res.status(500).json({ error: 'Service temporarily unavailable' });
   }
 
   const { to } = req.body ?? {};
@@ -33,7 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to send OTP';
-    return res.status(400).json({ error: message });
+    console.error('send-phone-otp failed:', error);
+    return res.status(400).json({ error: 'Unable to process request' });
   }
 }

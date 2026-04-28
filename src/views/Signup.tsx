@@ -14,6 +14,8 @@ interface SignupProps {
   onGoToLogin: () => void;
 }
 
+const GENERIC_OTP_ERROR = 'Une erreur est survenue. Veuillez reessayer.';
+
 const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -61,14 +63,9 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: phoneInfo.e164 }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
       setIsLoading(false);
       if (!res.ok) {
-        if (res.status === 404) {
-          setError('Endpoint OTP introuvable. Lancez Vite avec la configuration OTP ou deployez sur Vercel.');
-          return;
-        }
-        setError(body.error || 'Impossible d envoyer le code OTP.');
+        setError(GENERIC_OTP_ERROR);
         return;
       }
       setVerifiedPhoneE164(phoneInfo.e164);
@@ -76,7 +73,7 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
       setResendSecondsLeft(30);
     } catch {
       setIsLoading(false);
-      setError('Erreur reseau pendant l envoi OTP.');
+      setError(GENERIC_OTP_ERROR);
     }
   };
 
@@ -90,14 +87,14 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: verifiedPhoneE164 }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) {
-        setError(body.error || 'Impossible d envoyer le code OTP.');
+        setError(GENERIC_OTP_ERROR);
         return;
       }
       setResendSecondsLeft(30);
-    } catch {
-      setError('Erreur reseau pendant l envoi OTP.');
+    } catch (err) {
+      console.error('OTP resend failed:', err);
+      setError(GENERIC_OTP_ERROR);
     } finally {
       setIsLoading(false);
     }
@@ -116,10 +113,9 @@ const Signup: React.FC<SignupProps> = ({ language, onSignup, onGoToLogin }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: verifiedPhoneE164, code }),
       });
-      const verifyBody = (await verifyRes.json().catch(() => ({}))) as { error?: string };
       if (!verifyRes.ok) {
         setIsLoading(false);
-        setError(verifyBody.error || 'Code OTP invalide ou expire.');
+        setError('Code OTP invalide ou expire.');
         return;
       }
 
